@@ -1,5 +1,6 @@
 # Sahyog Vikas Foundation
 
+<<<<<<< HEAD
 A responsive Next.js website for Sahyog Vikas Foundation, with public pages for the foundation’s story, program areas, contact enquiries and donation pledges.
 
 ## Design
@@ -43,3 +44,21 @@ The privacy and terms pages are starter notices and must be reviewed and complet
 ## Environment
 
 See `.env.example`. `DATABASE_URL` is required by Prisma. For local development, `file:./dev.db` creates a SQLite database under `prisma/`. `NEXT_PUBLIC_SITE_URL` sets the canonical origin used for sitemap generation.
+=======
+Sahyog Vikas Foundation is a community-focused organization dedicated to empowering people through education, health awareness, livelihoods, and sustainable development.
+
+## Mission
+To create lasting opportunities for underserved communities by supporting access to education, healthcare, and meaningful growth.
+
+## Focus Areas
+- Education and learning support
+- Healthcare awareness and outreach
+- Skills and livelihood development
+- Community-centered sustainability initiatives
+
+## Website
+This repository contains a simple landing page for the foundation website.
+
+## Contact
+Email: hello@sahyogvikasfoundation.org
+>>>>>>> 07daea126d5d3a8df00cdaceaba7f4a0980334cd

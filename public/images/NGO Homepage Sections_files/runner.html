@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<!-- saved from url=(0063)https://cdn.platform.openai.com/deployments/dil/v14/runner.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5OnC/c0sEfhMMvQuXMcrgJR+ftu16IOuoBLhR1w0rLA=' 'self' https://cdn.platform.openai.com/assets/dil/ 'unsafe-eval'; base-uri 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; worker-src blob: data:">
+    <script>(() => {
+  const isRunnerModule = (script) =>
+    script.hasAttribute("data-dil-runner-module");
+  let modulePolicyDenied = false;
+  let moduleFailureReported = false;
+  document.addEventListener("securitypolicyviolation", (event) => {
+    if (
+      event.disposition === "enforce" &&
+      (event.effectiveDirective === "script-src" ||
+        event.effectiveDirective === "script-src-elem") &&
+      event.blockedURI ===
+        document.querySelector("script[data-dil-runner-module]")?.src
+    ) {
+      modulePolicyDenied = true;
+    }
+  });
+  const reportModuleError = (event) => {
+    if (
+      moduleFailureReported ||
+      !(event.target instanceof HTMLScriptElement) ||
+      !isRunnerModule(event.target)
+    )
+      return;
+    moduleFailureReported = true;
+    try {
+      const entries = performance.getEntriesByName(
+        event.target.src,
+        "resource",
+      );
+      if (entries.length === 1 && entries[0].responseStatus === 403)
+        modulePolicyDenied = true;
+    } catch {
+      // An opaque or unavailable status does not identify a policy denial.
+    }
+    try {
+      parent.postMessage(
+        {
+          __oaiDilFrame: true,
+          kind: "moduleError",
+          protocolVersion: 14,
+          ...(modulePolicyDenied ? { policyDenied: true } : {}),
+        },
+        "*",
+      );
+    } catch {}
+  };
+  if (
+    new URLSearchParams(location.hash.slice(1)).get("dil-diagnostics") !== "1"
+  ) {
+    addEventListener("error", reportModuleError, true);
+    return;
+  }
+  const documentBootId =
+    typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  let sequence = 0;
+  const now = performance.now.bind(performance);
+  const timeOriginMs = performance.timeOrigin;
+  const record = (operation, phase, details = {}) => {
+    if (sequence >= 64) return;
+    try {
+      parent.postMessage(
+        {
+          __oaiDilFrame: true,
+          kind: "diagnostic",
+          protocolVersion: 14,
+          record: {
+            realm: "bootstrap",
+            sequence: ++sequence,
+            localTimeMs: now(),
+            timeOriginMs,
+            documentBootId,
+            operation,
+            phase,
+            ...details,
+          },
+        },
+        "*",
+      );
+    } catch {}
+  };
+  const runnerModule = () =>
+    document.querySelector("script[data-dil-runner-module]");
+  const recordDocumentState = () => {
+    const script = runnerModule();
+    const details = {
+      documentReadyState: document.readyState,
+      ...(script
+        ? {
+            moduleEvaluationSupported: script.hasAttribute(
+              "data-dil-evaluation-checkpoint",
+            ),
+          }
+        : {}),
+    };
+    try {
+      const entries = performance.getEntriesByType("navigation");
+      const navigation = entries.length === 1 ? entries[0] : undefined;
+      if (navigation?.responseEnd > 0)
+        details.navigationResponseEndMs = navigation.responseEnd;
+      if (navigation?.domInteractive > 0)
+        details.navigationDomInteractiveMs = navigation.domInteractive;
+    } catch {}
+    record("module_load", "received", {
+      reason: "document_state",
+      ...details,
+    });
+  };
+  let evaluationObserved = false;
+  Object.defineProperty(window, "__oaiDilBootstrap", {
+    value: Object.freeze({
+      documentBootId,
+      moduleEvaluationStarted() {
+        if (evaluationObserved) return;
+        evaluationObserved = true;
+        record("module_load", "begin", { reason: "bundle_evaluation" });
+        recordDocumentState();
+        recordModuleResource(runnerModule());
+      },
+    }),
+  });
+  let completedModuleResource;
+  let resourceObserver;
+  const recordModuleResource = (script) => {
+    if (!script || !isRunnerModule(script)) return;
+    try {
+      const candidates = performance
+        .getEntriesByName(script.src, "resource")
+        // The preload scanner can start this document's module request before
+        // the inline bootstrap runs. The resource timeline is document-local.
+        .filter((entry) => entry.startTime <= now());
+      const timing = candidates.length === 1 ? candidates[0] : undefined;
+      const details = {
+        resourceArtifactId: /^runner-([A-Za-z0-9_-]{8,64})\.js$/.exec(
+          new URL(script.src).pathname.split("/").at(-1) ?? "",
+        )?.[1],
+        resourceStartMs: timing?.startTime,
+        resourceEndMs: timing?.responseEnd,
+        // Zero, including for a known 200 response, is not an HTTP failure.
+        ...(timing?.responseStatus >= 100 && timing.responseStatus <= 599
+          ? { httpStatus: timing.responseStatus }
+          : {
+              reason: timing
+                ? "status_unavailable"
+                : candidates.length > 1
+                  ? "timing_ambiguous"
+                  : "timing_missing",
+            }),
+      };
+      record("module_resource", "received", details);
+      if (
+        timing?.responseEnd > 0 &&
+        timing.responseEnd >= timing.startTime &&
+        !completedModuleResource
+      ) {
+        completedModuleResource = true;
+        // A later missing timing lookup must not erase positive completion.
+        record("module_resource", "returned", details);
+        resourceObserver?.disconnect();
+      }
+    } catch {
+      record("module_resource", "ignored", { reason: "timing_unavailable" });
+    }
+  };
+  record("observer_bootstrap", "returned", { hidden: document.hidden });
+  recordDocumentState();
+  document.addEventListener("readystatechange", recordDocumentState);
+  try {
+    resourceObserver = new PerformanceObserver((list) => {
+      const script = runnerModule();
+      if (
+        script &&
+        list.getEntries().some((entry) => entry.name === script.src)
+      )
+        recordModuleResource(script);
+    });
+    resourceObserver.observe({ type: "resource", buffered: true });
+  } catch {
+    // Existing load/probe lookups still work without PerformanceObserver.
+  }
+  addEventListener("pagehide", () => resourceObserver?.disconnect());
+  let probes = 0;
+  const probeTimers = new Set();
+  const cancelProbeTimers = () => {
+    for (const timer of probeTimers) clearTimeout(timer);
+    probeTimers.clear();
+  };
+  addEventListener("pagehide", cancelProbeTimers);
+  document.addEventListener("freeze", cancelProbeTimers);
+  addEventListener("message", (event) => {
+    const message = event.data;
+    if (
+      event.source === parent &&
+      message &&
+      typeof message === "object" &&
+      message.__oaiDilFrame === true &&
+      message.kind === "diagnosticProbe" &&
+      message.protocolVersion === 14 &&
+      typeof message.requestId === "string" &&
+      message.requestId.length <= 128 &&
+      probes++ < 4
+    ) {
+      record("frame_probe", "received", {
+        requestId: message.requestId,
+        hidden: document.hidden,
+      });
+      recordDocumentState();
+      // Inspect the original request even when neither script load nor error fired.
+      recordModuleResource(runnerModule());
+      const startedAtMs = now();
+      const timer = setTimeout(() => {
+        probeTimers.delete(timer);
+        record("event_loop", "fired", {
+          requestId: message.requestId,
+          budgetMs: 0,
+          elapsedMs: now() - startedAtMs,
+          hidden: document.hidden,
+        });
+      }, 0);
+      probeTimers.add(timer);
+    }
+  });
+  const isNativeError = Error.isError;
+  const getPrototypeOf = Object.getPrototypeOf;
+  const nativeErrorNames = new Map([
+    [Error.prototype, "Error"],
+    [TypeError.prototype, "TypeError"],
+    [RangeError.prototype, "RangeError"],
+    [SyntaxError.prototype, "SyntaxError"],
+    [ReferenceError.prototype, "ReferenceError"],
+    [URIError.prototype, "URIError"],
+    [EvalError.prototype, "EvalError"],
+  ]);
+  if (typeof AggregateError !== "undefined")
+    nativeErrorNames.set(AggregateError.prototype, "AggregateError");
+  let moduleExceptionRecorded = false;
+  addEventListener(
+    "error",
+    (event) => {
+      const script =
+        event.target instanceof HTMLScriptElement ? event.target : null;
+      const resource = script !== null;
+      if (
+        !moduleExceptionRecorded &&
+        event instanceof ErrorEvent &&
+        event.filename &&
+        event.filename === runnerModule()?.src
+      ) {
+        moduleExceptionRecorded = true;
+        let name = "unknown";
+        try {
+          // A native brand check avoids invoking thrown Proxy traps/getters.
+          if (isNativeError?.(event.error))
+            name = nativeErrorNames.get(getPrototypeOf(event.error)) ?? name;
+        } catch {}
+        const locations = [];
+        if (
+          Number.isSafeInteger(event.lineno) &&
+          event.lineno > 0 &&
+          event.lineno < 10_000_000 &&
+          Number.isSafeInteger(event.colno) &&
+          event.colno >= 0 &&
+          event.colno < 10_000_000
+        )
+          locations.push({ line: event.lineno, column: event.colno });
+        record("module_load", "reported_error", {
+          reason: "runner_module_exception",
+          fault: { name, locations, stackUnavailable: locations.length === 0 },
+        });
+      }
+      record(resource ? "module_load" : "error", "reported_error", {
+        reason: script
+          ? isRunnerModule(script)
+            ? "runner_module_script_error"
+            : "other_script_error"
+          : "uncaught_error",
+      });
+      if (script) recordModuleResource(script);
+      reportModuleError(event);
+    },
+    true,
+  );
+  addEventListener("unhandledrejection", () => {
+    record("error", "reported_error", { reason: "unhandled_rejection" });
+  });
+  document.addEventListener("securitypolicyviolation", (event) => {
+    const directive = event.effectiveDirective;
+    const operation =
+      directive === "script-src" || directive === "script-src-elem"
+        ? "module_load"
+        : directive === "worker-src"
+          ? "worker_create"
+          : "error";
+    const runnerModule = document.querySelector(
+      "script[data-dil-runner-module]",
+    );
+    const blocked = event.blockedURI;
+    record(operation, "reported_error", {
+      reason: "csp_violation",
+      cspDirective: [
+        "script-src",
+        "script-src-elem",
+        "script-src-attr",
+        "worker-src",
+      ].includes(directive)
+        ? directive
+        : "other",
+      cspDisposition: event.disposition,
+      // Keep URLs local. Cross-origin reports can redact the path, so a missing
+      // exact match does not prove that a different resource was blocked.
+      cspResource:
+        blocked && runnerModule?.src === blocked
+          ? "runner_module"
+          : blocked === "inline"
+            ? "inline"
+            : blocked === "eval" || blocked === "wasm-eval"
+              ? "eval"
+              : "unknown",
+    });
+  });
+  document.addEventListener(
+    "load",
+    (event) => {
+      if (
+        event.target instanceof HTMLScriptElement &&
+        isRunnerModule(event.target)
+      ) {
+        record("module_load", "returned");
+        recordModuleResource(event.target);
+      }
+    },
+    true,
+  );
+  document.addEventListener("visibilitychange", () => {
+    record("visibility", "received", { hidden: document.hidden });
+  });
+  for (const name of ["pagehide", "pageshow"]) {
+    addEventListener(name, (event) =>
+      record(name, "received", {
+        hidden: document.hidden,
+        persisted: event.persisted,
+      }),
+    );
+  }
+  for (const name of ["freeze", "resume"]) {
+    document.addEventListener(name, () =>
+      record(name, "received", { hidden: document.hidden }),
+    );
+  }
+})();
+</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIL Runner</title>
+    <script type="module" crossorigin="" src="./runner-CyWcquDQ.js.download" data-dil-runner-module="" data-dil-evaluation-checkpoint=""></script>
+  <style>
+.SignerDigitalExtPopupModal {
+	font-family: Calibri, sans-serif;
+	display: none;
+	height: 100%;
+	width: 100%;
+	justify-content: center;
+	display: flex;
+	left: 0;
+	top: 0;
+	position: fixed;
+	z-index: 9999;
+}
+
+.SignerDigitalExtClose {
+    position: absolute;
+    top: 30px;
+    right: 525px;
+    background: none;
+    border: none;
+    color: black;
+    font-size: 25px;
+    cursor: pointer;
+    transition: color 0.3s ease-in-out;
+}
+.SignerDigitalExtLicSitesClose {
+	background: none;
+	border: none;
+	color: black;
+	font-size: 25px;
+	cursor: pointer;
+	line-height:1;
+	transition: color 0.3s ease-in-out;
+}
+
+.SignerDigitalExtSelCertContainer {
+    font-family: Calibri, sans-serif;
+    background-color: #e6faf6;
+    top: 50px;
+	position: relative;
+	padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 30px auto;
+    width: 420px;
+    height: 420px;
+}
+
+.SignerDigitalExtSCPinContainer {
+    font-family: Calibri, sans-serif;
+    background-color: #e6faf6;
+    top: 50px;
+	position: relative;
+	padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 30px auto;
+    width: 360px;
+    height: 180px;
+}
+
+#SDCertListContainer {
+    margin-top: 10px;
+    max-height: 300px;
+    background-color: white;
+    overflow-y: auto;
+    padding: 0px;
+    border-radius: 5px;
+}
+
+
+.SignerDigitalExtImg {
+    text-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 40px;
+}
+
+.SignerDigitalExtSpan {
+    text-align: center;
+    font-size: 24px;
+    color: #333;
+}
+
+.SignerDigitalExtCertItem {
+    padding: 5px;
+    border-bottom: 1px solid;
+    margin-bottom: 2px;
+    cursor: pointer;
+}
+
+.SignerDigitalExtCertItem:hover {
+	background-color: #ccc;
+}
+
+.SignerDigitalExtCertItem.selected {
+	background-color: #ccc;
+	border-color: #007bff;
+}
+
+.expired {
+    color: red;
+    font-weight: bold;
+}
+
+.SignerDigitalExtButton {
+    padding: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+.SignerDigitalExtLicSitesImg {
+	padding-top: 10px;
+	display: flex;
+	justify-content: center;
+}
+
+.SignerDigitalExtLicSitesSpan {
+	font-size: 18px;
+	font-weight: bold;
+}
+
+.SignerDigitalExtLicSitesContainer {
+	font-family: Calibri, sans-serif;
+	background-color: #e6faf6;
+	border: 1px solid black;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+	margin: 30px auto;
+	width: 550px;
+	height: 500px;
+}
+
+.SignerDigitalExtLicSitesHeader {
+	font-size: 16px;
+	display: flex;
+	justify-content: space-between;
+	background-color: white;
+	padding: 5px;
+	border-bottom: 1px solid #ddd;
+}
+
+.SignerDigitalExtLicSitesParagraph {
+	padding-left: 15px;
+	padding-top: 20px;
+	font-size: 14px;
+}
+
+.SignerDigitalExtLicSitesDiv {
+	display: flex;
+	justify-content:center;
+	padding: 10px;
+}
+
+.SignerDigitalExtLicSitesBtn {
+	width: 100px;
+	padding: 3px;
+	font-weight: 600;
+	font-size: 12px;
+	box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+
+ .SignerDigitalExtLicSitesTable {
+     width: 100%;
+     background-color: white;
+     border-collapse: collapse;
+ }
+
+	
+ .SignerDigitalExtLicSitesTd {
+	 padding: 5px !important;
+     width: 140px;
+     border: 1px solid #ddd;
+     text-align: left;
+	 vertical-align:middle;
+ }
+ .SignerDigitalExtLicSitesTdd {
+     border: 1px solid #ddd;
+     text-align: center;
+ }
+
+ .SignerDigitalExtLicSitesTh {
+     border: 1px solid #ddd;
+     background-color: #f4f4f4;
+	 line-height:1;
+     width: 100px;
+     text-align: left;
+	 margin-top:5px;
+     padding: 5px;
+ }
+.SignerDigitalExtLicSitesScroll {
+     max-height: 200px;
+     overflow-y: auto;
+ }
+ .SignerDigitalExtLicSitesDltbtn {
+     color: white;
+     background-color: #e42424;
+     border: 1px solid black;
+     cursor: pointer;
+     border-radius: 4px;
+ }
+ .SignerDigitalExtLicSitesDltbtn:hover {
+         background-color: darkred;
+ }
+</style>
+</head>
+  <body>
+  <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4c7494c8f3e597d',t:'MTc5MjMyMzgxNg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+
+</body><div id="SelCertPopupModal" class="SignerDigitalExtPopupModal" style="display:none;">
+    <div class="SignerDigitalExtSelCertContainer">
+        <button id="SelCertCloseBtn" class="SignerDigitalExtClose">x</button>
+		<div class="SignerDigitalExtImg">
+			<img id="SDIconSelCert" alt="Globe icon" height="32" width="32" src="chrome-extension://glghokcicpikglmflbbelbgeafpijkkf/icon32.png">&nbsp;&nbsp;&nbsp;
+			<span class="SignerDigitalExtSpan" style="text-align:center;">Select Certificate</span>
+		</div>		
+		<div style="height: 310px; width: 100%; border-bottom: 1px solid black;background-color:white;">
+			<div style="max-height: 310px; overflow-y: auto;">
+				<div id="SDCertListContainer"></div>
+			</div>
+		</div>
+		<div class="SignerDigitalExtButton">
+			<button id="SelCertOkBtn" style="width: 80px">OK</button>
+			<button id="SelCertCancelBtn" style="margin-left:15px; width: 80px;">Cancel</button>
+		</div>
+	</div>
+</div>
+<div id="SdExtSCPinPopupModal" class="SignerDigitalExtPopupModal" style="display:none;">
+    <div class="SignerDigitalExtSCPinContainer">
+		<form>
+			<div class="SignerDigitalExtImg" style="border-bottom: 1px solid black;">
+				<img id="SDIconSCPin" alt="Globe icon" height="32" width="32" src="chrome-extension://glghokcicpikglmflbbelbgeafpijkkf/icon32.png">&nbsp;&nbsp;&nbsp;
+				<span class="SignerDigitalExtSpan" style="text-align:center;">Smartcard / Token User Pin</span>
+			</div>
+			<div style="text-align:center; padding-top:25px; padding-bottom:25px; font-size:14px;">User PIN:&nbsp;&nbsp;&nbsp;<input id="SdExtUserPin" type="password">
+			</div>
+			<div class="SignerDigitalExtButton" style="border-top: 1px solid black;">
+				<button id="SdScPinOkBtn" type="button" style="width: 80px">OK</button>
+				<button id="SdSCPinCancelBtn" type="button" style="margin-left:15px; width: 80px;">Cancel</button>
+			</div>
+		</form>
+	</div>
+</div>
+<div id="LicSitesPopupModal" class="SignerDigitalExtPopupModal" style="display:none;">
+	<div class="SignerDigitalExtLicSitesContainer">
+		<div class="SignerDigitalExtLicSitesHeader">
+			<span style="margin:10px;">Signer.Digital</span>
+			<button id="LicSitesCloseBtn" class="SignerDigitalExtLicSitesClose">x</button>
+		</div>
+		<div class="SignerDigitalExtLicSitesImg">
+			<img id="SDIconLicSite" alt="Globe icon" height="32" width="32" src="chrome-extension://glghokcicpikglmflbbelbgeafpijkkf/icon32.png">&nbsp;&nbsp;
+			<span class="SignerDigitalExtLicSitesSpan">Signer.Digital - Confirm Key Listing / Usage</span>
+		</div>
+		<div style="display:none;"><img id="trash_icon_src" src="chrome-extension://glghokcicpikglmflbbelbgeafpijkkf/icon_trash.svg"></div>
+		<div class="SignerDigitalExtLicSitesParagraph">
+			<span id="currentDomainLink" style="font-size:18px;font-weight:600;">Current Domain</span><br>
+			is trying to detect smartcards connected, or read certificate or use key for signing/encryption. Please
+			select your option.
+		</div>
+		<div class="SignerDigitalExtLicSitesDiv">
+			<button id="denyBtn" class="SignerDigitalExtLicSitesBtn">Deny</button>
+			<button id="alwaysallowBtn" class="SignerDigitalExtLicSitesBtn" style="margin-left:30px;" title="Allow access to Check Vendor License for Site.">Always Allow</button>
+		</div>
+		<div style="padding: 10px; text-align: center; ">
+			<strong style="font-size:18px;">Licensed Sites</strong><br><br>
+			<div style="height: 200px; width: 100%; border: 1px solid black;">
+				<div class="SignerDigitalExtLicSitesScroll">
+					<table class="SignerDigitalExtLicSitesTable">
+						<thead>
+							<tr>
+								<th class="SignerDigitalExtLicSitesTh">Website</th>
+								<th class="SignerDigitalExtLicSitesTh">License Status</th>
+								<th class="SignerDigitalExtLicSitesTh">Features</th>
+								<th class="SignerDigitalExtLicSitesTh" style="width:50px;">Action</th>
+							</tr>
+						</thead>
+						<tbody id="licenseSitesTableBody">
+							<!-- Table rows will be dynamically added here -->
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<span id="SDLicSitesErrMsg" style="color:red"></span>
+		</div>
+	</div>
+</div>
+
+
+
+
+
+
+</html>

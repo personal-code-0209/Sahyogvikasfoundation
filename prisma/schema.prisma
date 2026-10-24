@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+}
+
+model DonationPledge {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  amount    Int
+  frequency String
+  message   String?
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+}

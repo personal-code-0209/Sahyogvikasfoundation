@@ -4,12 +4,14 @@ import { FormEvent, useState } from "react";
 import { ArrowRight, CheckCircle2, LoaderCircle } from "lucide-react";
 
 type FormKind = "contact" | "donation";
+const suggestedAmounts = [500, 1000, 2500];
 
 export default function SubmissionForm({ kind }: { kind: FormKind }) {
   const isDonation = kind === "donation";
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [error, setError] = useState("");
   const [customAmount, setCustomAmount] = useState("");
+  const [frequency, setFrequency] = useState<"once" | "monthly">("once");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,6 +40,7 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
       }
       form.reset();
       setCustomAmount("");
+      setFrequency("once");
       setStatus("success");
     } catch {
       setError("We could not connect. Please check your connection and try again.");
@@ -61,19 +64,55 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
   }
 
   return (
-    <form className="submission-form" onSubmit={handleSubmit}>
+    <form className={`submission-form${isDonation ? " submission-form--donation" : ""}`} onSubmit={handleSubmit}>
       {isDonation && (
         <div className="form-field">
           <label htmlFor="amount">Contribution amount <span>(INR)</span></label>
-          <div className="custom-amount-wrap">
-            <span className="custom-amount-prefix">₹</span>
+          <div className="donation-frequency" role="group" aria-label="Pledge frequency">
+            <button
+              aria-pressed={frequency === "once"}
+              className={frequency === "once" ? "is-selected" : ""}
+              onClick={() => setFrequency("once")}
+              type="button"
+            >
+              One-time
+            </button>
+            <button
+              aria-pressed={frequency === "monthly"}
+              className={frequency === "monthly" ? "is-selected" : ""}
+              onClick={() => setFrequency("monthly")}
+              type="button"
+            >
+              Monthly
+            </button>
+          </div>
+          <input name="frequency" type="hidden" value={frequency} />
+          <div className="donation-amount-options" role="group" aria-label="Suggested contribution amounts">
+            {suggestedAmounts.map((amount) => (
+              <button
+                aria-pressed={customAmount === String(amount)}
+                className={customAmount === String(amount) ? "is-selected" : ""}
+                key={amount}
+                onClick={() => setCustomAmount(String(amount))}
+                type="button"
+              >
+                ₹{amount.toLocaleString("en-IN")}
+              </button>
+            ))}
+          </div>
+          <span className="donation-amount-hint" id="amount-hint">Or enter a different amount (minimum ₹100)</span>
+          <div className="donation-amount-wrap">
+            <span className="donation-amount-prefix" aria-hidden="true">₹</span>
             <input
-              className="custom-amount-input"
+              aria-describedby="amount-hint"
+              className="donation-amount-input"
               id="amount"
-              min="1"
+              max="10000000"
+              min="100"
               onChange={(e) => setCustomAmount(e.target.value)}
-              placeholder="0"
+              placeholder="Enter amount"
               required
+              step="100"
               type="number"
               value={customAmount}
             />
@@ -92,7 +131,7 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
       </div>
       <div className="form-field">
         <label htmlFor={`${kind}-phone`}>Phone number <span>(optional)</span></label>
-        <input autoComplete="tel" id={`${kind}-phone`} maxLength={30} name="phone" placeholder="+91" type="tel" />
+        <input autoComplete="tel" id={`${kind}-phone`} maxLength={30} name="phone" placeholder={isDonation ? "Your phone number" : "+91"} type="tel" />
       </div>
       {!isDonation && (
         <div className="form-field">
@@ -108,15 +147,15 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
         </div>
       )}
       <div className="form-field">
-        <label htmlFor={`${kind}-message`}>{isDonation ? "A note for our team" : "Your message"} <span>{isDonation ? "(optional)" : ""}</span></label>
+        <label htmlFor={`${kind}-message`}>{isDonation ? "A note for our team" : "Your message"} {isDonation && <span>(optional)</span>}</label>
         <textarea
           id={`${kind}-message`}
           maxLength={isDonation ? 1000 : 5000}
           minLength={isDonation ? undefined : 10}
           name="message"
-          placeholder={isDonation ? "Tell us what inspires your support..." : "Tell us a little about how we can help..."}
+          placeholder={isDonation ? "Anything you’d like us to know?" : "Tell us a little about how we can help..."}
           required={!isDonation}
-          rows={4}
+          rows={isDonation ? 3 : 4}
         />
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -127,7 +166,11 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
           <>{isDonation ? "Send my pledge" : "Send your message"} <ArrowRight size={16} /></>
         )}
       </button>
-      <p className="form-privacy">Your details are only used to respond to this enquiry.</p>
+      <p className="form-privacy">
+        {isDonation
+          ? "This is a pledge only—no payment is taken now. We’ll contact you about next steps."
+          : "Your details are only used to respond to this enquiry."}
+      </p>
       {status === "error" && <span className="sr-only" aria-live="polite">{error}</span>}
     </form>
   );

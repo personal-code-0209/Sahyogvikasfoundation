@@ -55,7 +55,7 @@ export default function WellbeingPage() {
             </div>
           </div>
           <div className="inner-hero-visual">
-            <div className="inner-hero-image wellbeing-hero-image" role="img" aria-label="Community health outreach; illustrative photograph" />
+            <img className="inner-hero-image" src="/images/Healthcare — Hope and support.png" alt="Community health outreach; illustrative photograph" />
           </div>
         </div>
       </section>

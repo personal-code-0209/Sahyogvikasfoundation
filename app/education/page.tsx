@@ -55,7 +55,7 @@ export default function EducationPage() {
             </div>
           </div>
           <div className="inner-hero-visual">
-            <div className="inner-hero-image education-hero-image" role="img" aria-label="Children learning together; illustrative photograph" />
+            <img className="inner-hero-image" src="/images/Education — A brighter future for a child.png" alt="Children learning together; illustrative photograph" />
           </div>
         </div>
       </section>

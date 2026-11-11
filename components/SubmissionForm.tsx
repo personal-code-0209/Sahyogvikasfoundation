@@ -9,6 +9,7 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
   const isDonation = kind === "donation";
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [error, setError] = useState("");
+  const [customAmount, setCustomAmount] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -17,6 +18,11 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
 
     const form = event.currentTarget;
     const data = Object.fromEntries(new FormData(form).entries());
+
+    // inject custom amount
+    if (isDonation) {
+      data.amount = customAmount;
+    }
 
     try {
       const response = await fetch(`/api/${kind === "contact" ? "contact" : "donations"}`, {
@@ -31,6 +37,7 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
         return;
       }
       form.reset();
+      setCustomAmount("");
       setStatus("success");
     } catch {
       setError("We could not connect. Please check your connection and try again.");
@@ -58,27 +65,19 @@ export default function SubmissionForm({ kind }: { kind: FormKind }) {
       {isDonation && (
         <div className="form-field">
           <label htmlFor="amount">Contribution amount <span>(INR)</span></label>
-          <div className="amount-options">
-            {[500, 1000, 2500].map((amount) => (
-              <label className="amount-option" key={amount}>
-                <input defaultChecked={amount === 1000} id={amount === 500 ? "amount" : undefined} name="amount" type="radio" value={amount} />
-                <span>₹{amount.toLocaleString("en-IN")}</span>
-              </label>
-            ))}
-            <label className="amount-option custom-amount">
-              <input name="amount" type="radio" value="5000" />
-              <span>₹5,000</span>
-            </label>
+          <div className="custom-amount-wrap">
+            <span className="custom-amount-prefix">₹</span>
+            <input
+              className="custom-amount-input"
+              id="amount"
+              min="1"
+              onChange={(e) => setCustomAmount(e.target.value)}
+              placeholder="0"
+              required
+              type="number"
+              value={customAmount}
+            />
           </div>
-        </div>
-      )}
-      {isDonation && (
-        <div className="form-field">
-          <label htmlFor="frequency">How often?</label>
-          <select defaultValue="once" id="frequency" name="frequency">
-            <option value="once">One-time contribution</option>
-            <option value="monthly">Monthly contribution</option>
-          </select>
         </div>
       )}
       <div className="form-row">

@@ -61,7 +61,7 @@ export default function GetInvolvedPage() {
             </div>
           </div>
           <div className="inner-hero-visual">
-            <div className="inner-hero-image getinvolved-hero-image" role="img" aria-label="Volunteers working together; illustrative photograph" />
+            <img className="inner-hero-image" src="/images/Community Welfare — Supporting families.png" alt="Volunteers working together; illustrative photograph" />
           </div>
         </div>
       </section>

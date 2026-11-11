@@ -16,6 +16,7 @@ const programs = [
     actions: ["Learning support and enrichment", "Youth skills and confidence", "Welcoming, inclusive spaces"],
     icon: <BookOpenCheck size={27} />,
     tone: "program-green",
+    image: "/images/Education & learning.png",
     href: "/education",
   },
   {
@@ -26,6 +27,7 @@ const programs = [
     actions: ["Health awareness and outreach", "Community care and connection", "Support for dignity and inclusion"],
     icon: <HeartPulse size={27} />,
     tone: "program-peach",
+    image: "/images/Health & wellbeing.png",
     href: "/wellbeing",
   },
   {
@@ -36,6 +38,7 @@ const programs = [
     actions: ["Skills and capacity building", "Local opportunity and enterprise", "Resilience for the future"],
     icon: <Sprout size={27} />,
     tone: "program-sand",
+    image: "/images/Skills & livelihoods.png",
     href: "/livelihoods",
   },
 ];
@@ -65,7 +68,9 @@ export default function ProgramsPage() {
               <ul>{program.actions.map((action) => <li key={action}>{action}</li>)}</ul>
               <Link className="text-link" href={program.href} style={{marginTop:"18px", display:"inline-flex"}}>Explore this area <ArrowRight size={15} /></Link>
             </div>
-            <div className="program-row-image" role="img" aria-label={`${program.title} community program`} />
+            <div className="program-row-image">
+              <img src={program.image} alt={`${program.title} community program`} />
+            </div>
           </article>
         ))}
       </section>

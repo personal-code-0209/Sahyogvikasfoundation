@@ -55,7 +55,7 @@ export default function LivelihoodsPage() {
             </div>
           </div>
           <div className="inner-hero-visual">
-            <div className="inner-hero-image livelihoods-hero-image" role="img" aria-label="Community skills training; illustrative photograph" />
+            <img className="inner-hero-image" src="/images/Local skills, future possibilities.png" alt="Community skills training; illustrative photograph" />
           </div>
         </div>
       </section>

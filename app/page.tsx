@@ -16,21 +16,21 @@ const focusAreas = [
   {
     title: "Education & learning",
     text: "Opening up welcoming spaces where children and young people can learn, build skills and imagine what comes next.",
-    image: "focus-learning",
+    image: "/images/Education & learning.png",
     icon: <BookOpenCheck size={20} />,
     href: "/education",
   },
   {
     title: "Health & wellbeing",
     text: "Supporting healthier, more connected communities through awareness, care and access to essential resources.",
-    image: "focus-wellbeing",
+    image: "/images/Health & wellbeing.png",
     icon: <HeartPulse size={20} />,
     href: "/wellbeing",
   },
   {
     title: "Skills & livelihoods",
     text: "Working alongside people to strengthen practical skills and locally shaped livelihood opportunities.",
-    image: "focus-livelihoods",
+    image: "/images/Skills & livelihoods.png",
     icon: <Sprout size={20} />,
     href: "/livelihoods",
   },
@@ -42,7 +42,7 @@ const projectFocus = [
     category: "Education & learning",
     title: "Learning, shaped around learners",
     text: "Learning support is one of the areas Sahyog Vikas Foundation aims to explore with communities. Specific locations, activities and results will be shared when verified.",
-    image: "project-learning",
+    image: "/images/Learning, shaped around learners.png",
     href: "/education",
   },
   {
@@ -50,7 +50,7 @@ const projectFocus = [
     category: "Health & wellbeing",
     title: "Care that starts with listening",
     text: "Community wellbeing begins by understanding what people need. Confirmed project activities and outcomes will be published here as the foundation reports them.",
-    image: "project-wellbeing",
+    image: "/images/Care that starts with listening.png",
     href: "/wellbeing",
   },
   {
@@ -58,7 +58,7 @@ const projectFocus = [
     category: "Skills & livelihoods",
     title: "Local skills, future possibilities",
     text: "The foundation's livelihood focus puts local knowledge first. Project details and measurable results are not yet available for publication.",
-    image: "project-livelihoods",
+    image: "/images/Skills & livelihoods.png",
     href: "/livelihoods",
   },
 ];
@@ -142,8 +142,10 @@ export default function Home() {
           </div>
           <div className="focus-grid">
             {focusAreas.map((item) => (
-              <article className={`focus-card ${item.image}`} key={item.title}>
-                <div className="focus-card-image" role="img" aria-label={`${item.title}; illustrative photograph`} />
+              <article className="focus-card" key={item.title}>
+                <div className="focus-card-image">
+                  <img src={item.image} alt={`${item.title}; illustrative photograph`} />
+                </div>
                 <div className="focus-card-content">
                   <div className="focus-card-icon">{item.icon}</div>
                   <h3>{item.title}</h3>
@@ -168,7 +170,9 @@ export default function Home() {
           <div className="project-grid">
             {projectFocus.map((project) => (
               <article className="project-card" key={project.number}>
-                <div className={`project-card-image ${project.image}`} role="img" aria-label={`${project.category}; illustrative photograph`} />
+                <div className="project-card-image">
+                  <img src={project.image} alt={`${project.category}; illustrative photograph`} />
+                </div>
                 <div className="project-card-content">
                   <div className="project-meta"><span>{project.number}</span><span>{project.category}</span></div>
                   <h3>{project.title}</h3>

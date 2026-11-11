@@ -62,7 +62,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border: 0;
 }
 .top-note {
-  height: 31px;
+  height: 26px;
   background: var(--forest-deep);
   color: var(--color-blush);
   display: flex;
@@ -91,7 +91,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .nav-wrap {
   position: relative;
   width: min(1310px, calc(100% - 112px));
-  height: 84px;
+  height: 72px;
   margin: auto;
   display: flex;
   align-items: center;
@@ -1001,11 +1001,11 @@ h1 em, h2 em { color: var(--sage); font-weight: 400; }
   .page-shell, .footer-main, .footer-bottom { width: calc(100% - 40px); }
   .section-pad { padding-block: 75px; }
   .top-note { height: 29px; font-size: 9px; }
-  .nav-wrap { width: calc(100% - 40px); height: 69px; }
+  .nav-wrap { width: calc(100% - 40px); height: 60px; }
   .menu-toggle { display: inline-flex; }
   .main-nav {
     position: absolute;
-    top: 69px;
+    top: 60px;
     right: 0;
     left: 0;
     display: none;

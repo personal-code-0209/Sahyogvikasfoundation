@@ -97,20 +97,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   align-items: center;
   justify-content: space-between;
 }
-.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--forest); }
-.brand-mark { width: 32px; height: 31px; display: flex; align-items: flex-end; gap: 3px; }
-.brand-mark span { display: block; width: 8px; background: var(--sage); border-radius: 8px 8px 2px 2px; transform: rotate(-27deg); }
-.brand-mark span:nth-child(1) { height: 15px; margin-bottom: 1px; }
-.brand-mark span:nth-child(2) { height: 24px; background: var(--forest); }
-.brand-mark span:nth-child(3) { height: 18px; background: var(--lime); margin-bottom: 3px; }
-.brand-name { position: relative; font-size: 13px; font-weight: 700; letter-spacing: .09em; line-height: 1.1; }
+.brand { display: inline-flex; align-items: center; gap: 9px; color: var(--forest); }
+.brand-mark { width: 28px; height: 27px; display: flex; align-items: flex-end; gap: 3px; }
+.brand-mark span { display: block; width: 7px; background: var(--sage); border-radius: 8px 8px 2px 2px; transform: rotate(-27deg); }
+.brand-mark span:nth-child(1) { height: 13px; margin-bottom: 1px; }
+.brand-mark span:nth-child(2) { height: 21px; background: var(--forest); }
+.brand-mark span:nth-child(3) { height: 16px; background: var(--lime); margin-bottom: 2px; }
+.brand-name { position: relative; font-size: 12px; font-weight: 700; letter-spacing: .09em; line-height: 1.05; }
 .brand-name b { font-weight: 500; }
-.brand-name small { display: block; margin-top: 4px; font-size: 8px; letter-spacing: .29em; }
+.brand-name small { display: block; margin-top: 3px; font-size: 7px; letter-spacing: .29em; }
 .main-nav {
   display: flex;
   align-items: center;
-  gap: 39px;
-  font-size: 12px;
+  gap: 33px;
+  font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -119,13 +119,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .nav-donate {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 13px 17px;
+  gap: 10px;
+  padding: 10px 15px;
   color: white;
   background: var(--forest);
   transition: background .2s;
   border-radius: var(--radius-button);
   white-space: nowrap;
+  font-size: 11px;
 }
 .nav-donate:hover, .button-dark:hover { background: #7d2949; }
 .menu-toggle { display: none; border: 0; background: none; color: var(--forest); padding: 7px; }
